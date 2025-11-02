@@ -2,17 +2,9 @@ from langgraph.prebuilt import create_react_agent
 
 from langchain_google_genai import ChatGoogleGenerativeAI
 from agent_tools import calculator
+from utils import format_messages
 
-# Define the format_messages to format responses
-def format_messages(messages):
-    """Formats a list of messages for display."""
-    for message in messages:
-        if isinstance(message, tuple):
-            print(f"{message[0]}: {message[1]}")
-        else:
-            print(message)
-
-def process():
+def call_calc_agent():
 
     SYSTEM_PROMPT = "You are a helpful arithmetic assistant who is an expert at using a calculator"
 
