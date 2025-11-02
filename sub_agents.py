@@ -1,13 +1,18 @@
+from datetime import datetime
+
 from IPython.display import Image, display
 from langchain.chat_models import init_chat_model
 from langchain_core.tools import tool
-from langchain_google_genai import ChatGoogleGenerativeAI
 from langgraph.prebuilt import create_react_agent
+
+from prompts import SUBAGENT_USAGE_INSTRUCTIONS
+from state import DeepAgentState
+from task_tool import _create_task_tool
 from utils import format_messages
 
-from prompts import TODO_USAGE_INSTRUCTIONS
-from state import DeepAgentState
-from todo_tools import read_todos, write_todos
+# Limits
+max_concurrent_research_units = 3
+max_researcher_iterations = 3
 
 # Mock search result
 search_result = """The Model Context Protocol (MCP) is an open standard protocol developed 
@@ -34,7 +39,7 @@ def web_search(
                information you're looking for.
 
     Returns:
-        Search results from search engine.
+        Search results from the search engine.
 
     Example:
         web_search("machine learning applications in healthcare")
@@ -42,23 +47,41 @@ def web_search(
     return search_result
 
 
-def call_todo_agent():
+def call_sub_agents():
+    # Add mock research instructions
+    SIMPLE_RESEARCH_INSTRUCTIONS = """You are a researcher. Research the topic provided to you. IMPORTANT: call to the web_search tool and use the result provided by the tool to answer the provided topic."""
+
+    # Create research sub-agent
+    research_sub_agent = {
+        "name": "research-agent",
+        "description": "Delegate research to the sub-agent researcher. Only give this researcher one topic at a time.",
+        "prompt": SIMPLE_RESEARCH_INSTRUCTIONS,
+        "tools": ["web_search"],
+    }
+
     # Create agent using create_react_agent directly
     model = init_chat_model(model="google_genai:gemini-2.5-flash", temperature=0.0)
-    tools = [write_todos, web_search, read_todos]
 
-    # Add mock research instructions
-    SIMPLE_RESEARCH_INSTRUCTIONS = """IMPORTANT: Just make a single call to the web_search tool and use the result provided by the tool to answer the user's question."""
+    # Tools for sub-agent
+    sub_agent_tools = [web_search]
 
-    # Create agent
+    # Create task tool to delegate tasks to sub-agents
+    task_tool = _create_task_tool(
+        sub_agent_tools, [research_sub_agent], model, DeepAgentState
+    )
+
+    # Tools
+    delegation_tools = [task_tool]
+
+    # Create agent with system prompt
     agent = create_react_agent(
         model,
-        tools,
-        prompt=TODO_USAGE_INSTRUCTIONS
-               + "\n\n"
-               + "=" * 80
-               + "\n\n"
-               + SIMPLE_RESEARCH_INSTRUCTIONS,
+        delegation_tools,
+        prompt=SUBAGENT_USAGE_INSTRUCTIONS.format(
+            max_concurrent_research_units=max_concurrent_research_units,
+            max_researcher_iterations=max_researcher_iterations,
+            date=datetime.now().strftime("%m %d %Y"),
+        ),
         state_schema=DeepAgentState,
     )
 
@@ -67,10 +90,9 @@ def call_todo_agent():
             "messages": [
                 {
                     "role": "user",
-                    "content": "Give me a short summary of the Model Context Protocol (MCP).",
+                    "content": "Give me an overview of the Model Context Protocol.",
                 }
             ],
-            "todos": [],
         }
     )
 

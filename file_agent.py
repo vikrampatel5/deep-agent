@@ -59,7 +59,7 @@ INSTRUCTIONS = (
 
 def call_file_agent():
     # Create agent using create_react_agent directly
-    model = ChatGoogleGenerativeAI(model="gemini-2.5-flash", temperature=0.0)
+    model = init_chat_model(model="google_genai:gemini-2.5-flash", temperature=0.0)
     tools = [ls, read_file, write_file, web_search]
 
     # Create agent with system prompt

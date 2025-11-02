@@ -1,3 +1,4 @@
+from langchain.chat_models import init_chat_model
 from langgraph.prebuilt import create_react_agent
 
 from langchain_google_genai import ChatGoogleGenerativeAI
@@ -8,7 +9,7 @@ def call_calc_agent():
 
     SYSTEM_PROMPT = "You are a helpful arithmetic assistant who is an expert at using a calculator"
 
-    model = ChatGoogleGenerativeAI(model="gemini-2.5-flash", temperature=0.0)
+    model = init_chat_model(model="google_genai:gemini-2.5-flash", temperature=0.0)
     tools = [calculator]
 
     agent = create_react_agent(
